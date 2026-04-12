@@ -1,0 +1,57 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================
+; UrlPrompt registration template
+; Prefer using install.bat, which writes the correct absolute path
+; automatically based on the current folder.
+; ============================================================
+
+; This .reg is kept as a reference template only.
+; If you import it directly, replace __URLPROMPT_EXE__ and __URLPROMPT_DIR__ first.
+
+[HKEY_CURRENT_USER\Software\RegisteredApplications]
+"UrlPrompt"="Software\\UrlPrompt\\Capabilities"
+
+[HKEY_CURRENT_USER\Software\UrlPrompt\Capabilities]
+"ApplicationName"="UrlPrompt"
+"ApplicationDescription"="Prompt before opening http/https links and then forward to a real browser."
+
+[HKEY_CURRENT_USER\Software\UrlPrompt\Capabilities\UrlAssociations]
+"http"="UrlPrompt.http"
+"https"="UrlPrompt.https"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.http]
+@="UrlPrompt HTTP"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.http\DefaultIcon]
+@="\"__URLPROMPT_EXE__\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.http\shell]
+@="open"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.http\shell\open]
+@="Open"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.http\shell\open\command]
+@="\"__URLPROMPT_EXE__\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.https]
+@="UrlPrompt HTTPS"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.https\DefaultIcon]
+@="\"__URLPROMPT_EXE__\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.https\shell]
+@="open"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.https\shell\open]
+@="Open"
+
+[HKEY_CURRENT_USER\Software\Classes\UrlPrompt.https\shell\open\command]
+@="\"__URLPROMPT_EXE__\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\App Paths\UrlPrompt.exe]
+@="__URLPROMPT_EXE__"
+"Path"="__URLPROMPT_DIR__"

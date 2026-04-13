@@ -18,12 +18,6 @@ internal class AboutDialog : Form
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
         var margin = 20;
 
-        var iconLabel = new Label
-        {
-            Left = margin, Top = 20,
-            Width = 64, Height = 64,
-            Text = "",
-        };
         // Use a text placeholder for the icon area
         var iconBg = new Label
         {
@@ -62,7 +56,7 @@ internal class AboutDialog : Form
                 "based on rules you define.\n\n" +
                 "Supports domain patterns, time-based rules, and custom browser executables."+
                 "\n\n Developer: Jieyang Wang, Chengrui Zhu"+
-                "\n Website: https://github.com/HigherNut/UrlPrompt",
+                "\n Website: https://github.com/HigherNut/UrlRouter",
             ForeColor = System.Drawing.SystemColors.ControlText
         };
 

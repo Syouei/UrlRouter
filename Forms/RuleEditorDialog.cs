@@ -32,100 +32,114 @@ internal class RuleEditorDialog : Form
     {
         Text = "Edit Rule";
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(540, 500);
+        MinimumSize = new Size(500, 520);
+        ClientSize = new Size(600, 560);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
 
-        int y = 12, margin = 12;
-        var col2 = margin + 130;
+        int margin = 16;
+        int labelW = 130;
+        int col2 = margin + labelW + 8;
+        int fieldW = ClientSize.Width - col2 - margin;
 
-        AddLabel("Rule name:", margin, y);
-        _txtName = AddTextBox(col2, y, 390);
+        int y = margin;
+
+        // Rule name
+        var lblName = new Label { Left = margin, Top = y + 2, Width = labelW, Text = "Rule name:" };
+        _txtName = new TextBox { Left = col2, Top = y, Width = fieldW };
+        Controls.Add(lblName);
+        Controls.Add(_txtName);
 
         y += 32;
-        _chkEnabled = AddCheckBox("Enabled", margin, y);
+        _chkEnabled = new CheckBox { Left = margin, Top = y, Text = "Enabled", Width = 200 };
         _chkEnabled.Checked = true;
-
-        y += 30;
-        AddLabel("Domain pattern:", margin, y);
-        _txtDomain = AddTextBox(col2, y, 390);
-        _txtDomain.TextChanged += (_, _) => UpdateDomainPreview();
-
-        _lblDomainPreview = new Label
-        {
-            Left = col2, Top = y + 24, Width = 390, Height = 20,
-            Text = "e.g. github.com  or  *.example.com", ForeColor = System.Drawing.Color.Gray
-        };
-        Controls.Add(_lblDomainPreview);
-        y += 50;
-
-        _chkTimeEnabled = AddCheckBox("Time restriction", margin, y);
-        _chkTimeEnabled.CheckedChanged += (_, _) =>
-        {
-            foreach (Control c in new Control[] { _clbDays, _dtpStart, _dtpEnd })
-                c.Enabled = _chkTimeEnabled.Checked;
-        };
+        Controls.Add(_chkEnabled);
 
         y += 28;
+        var lblDomain = new Label { Left = margin, Top = y + 2, Width = labelW, Text = "Domain pattern:" };
+        _txtDomain = new TextBox { Left = col2, Top = y, Width = fieldW };
+        _txtDomain.TextChanged += (_, _) => UpdateDomainPreview();
+        Controls.Add(lblDomain);
+        Controls.Add(_txtDomain);
+
+        y += 28;
+        _lblDomainPreview = new Label
+        {
+            Left = col2, Top = y + 2, Width = fieldW,
+            Text = "e.g. github.com  or  *.example.com",
+            ForeColor = System.Drawing.Color.Gray
+        };
+        Controls.Add(_lblDomainPreview);
+
+        y += 26;
+        _chkTimeEnabled = new CheckBox { Left = margin, Top = y, Text = "Time restriction", Width = 200 };
+        _chkTimeEnabled.CheckedChanged += (_, _) =>
+        {
+            _clbDays.Enabled = _dtpStart.Enabled = _dtpEnd.Enabled = _chkTimeEnabled.Checked;
+        };
+        Controls.Add(_chkTimeEnabled);
+
+        y += 26;
         _clbDays = new CheckedListBox
         {
-            Left = col2, Top = y, Width = 390, Height = 90
+            Left = col2, Top = y, Width = fieldW, Height = 100
         };
         _clbDays.Items.AddRange(new object[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" });
         _clbDays.CheckOnClick = true;
         Controls.Add(_clbDays);
 
-        y += 96;
-        AddLabel("From:", col2, y);
+        y += 104;
+        var lblFrom = new Label { Left = col2, Top = y + 2, Width = 40, Text = "From:" };
         _dtpStart = new DateTimePicker
         {
-            Left = col2 + 50, Top = y, Width = 100,
-            Format = DateTimePickerFormat.Time,
-            ShowUpDown = true
+            Left = col2 + 42, Top = y, Width = 110,
+            Format = DateTimePickerFormat.Time, ShowUpDown = true
         };
-        AddLabel("To:", col2 + 170, y);
+        Controls.Add(lblFrom);
+        Controls.Add(_dtpStart);
+
+        y += 28;
+        var lblTo = new Label { Left = col2, Top = y + 2, Width = 40, Text = "To:" };
         _dtpEnd = new DateTimePicker
         {
-            Left = col2 + 200, Top = y, Width = 100,
-            Format = DateTimePickerFormat.Time,
-            ShowUpDown = true
+            Left = col2 + 42, Top = y, Width = 110,
+            Format = DateTimePickerFormat.Time, ShowUpDown = true
         };
-        Controls.AddRange(new Control[] { _dtpStart, _dtpEnd });
+        Controls.Add(lblTo);
+        Controls.Add(_dtpEnd);
 
-        y += 36;
-        AddLabel("Open in:", margin, y);
+        y += 32;
+        var lblBrowser = new Label { Left = margin, Top = y + 2, Width = labelW, Text = "Open in:" };
         _cmbBrowser = new ComboBox
         {
-            Left = col2, Top = y, Width = 180,
+            Left = col2, Top = y, Width = 200,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         _cmbBrowser.Items.AddRange(new object[] { "Edge", "Chrome", "Firefox", "Custom" });
         _cmbBrowser.SelectedIndex = 0;
         _cmbBrowser.SelectedIndexChanged += (_, _) =>
         {
-            _chkCustom.Visible = _cmbBrowser.SelectedIndex == 3;
-            _txtCustomExe.Visible = _cmbBrowser.SelectedIndex == 3;
-            _btnBrowse.Visible = _cmbBrowser.SelectedIndex == 3;
+            bool isCustom = _cmbBrowser.SelectedIndex == 3;
+            _chkCustom.Visible = isCustom;
+            _txtCustomExe.Visible = isCustom;
+            _btnBrowse.Visible = isCustom;
         };
+        Controls.Add(lblBrowser);
         Controls.Add(_cmbBrowser);
 
         y += 30;
-        _chkCustom = AddCheckBox("Custom executable:", margin, y);
-        _chkCustom.Visible = false;
-        _chkCustom.CheckedChanged += (_, _) =>
+        _chkCustom = new CheckBox
         {
-            _txtCustomExe.Enabled = _chkCustom.Checked;
-            _btnBrowse.Enabled = _chkCustom.Checked;
+            Left = col2, Top = y, Text = "Custom executable:", Width = 200, Visible = false
         };
+        Controls.Add(_chkCustom);
 
-        _txtCustomExe = new TextBox
-        {
-            Left = col2, Top = y, Width = 300, Enabled = false
-        };
+        y += 26;
+        _txtCustomExe = new TextBox { Left = col2, Top = y, Width = fieldW - 96, Enabled = false, Visible = false };
         _btnBrowse = new Button
         {
-            Left = col2 + 290, Top = y - 1, Width = 80, Text = "Browse..."
+            Left = col2 + fieldW - 90, Top = y - 1, Width = 86, Text = "Browse...", Visible = false
         };
         _btnBrowse.Click += (_, _) =>
         {
@@ -133,34 +147,29 @@ internal class RuleEditorDialog : Form
             if (ofd.ShowDialog() == DialogResult.OK)
                 _txtCustomExe.Text = ofd.FileName;
         };
-        _txtCustomExe.Visible = false;
-        _btnBrowse.Visible = false;
-        Controls.AddRange(new Control[] { _txtCustomExe, _btnBrowse });
+        _chkCustom.CheckedChanged += (_, _) =>
+        {
+            _txtCustomExe.Enabled = _btnBrowse.Enabled = _chkCustom.Checked;
+        };
+        Controls.Add(_txtCustomExe);
+        Controls.Add(_btnBrowse);
 
-        y += 50;
-        var btnOK = new Button { Text = "OK", Left = ClientSize.Width - margin - 210, Top = y, Width = 90, Height = 32 };
-        var btnCancel = new Button { Text = "Cancel", Left = ClientSize.Width - margin - 100, Top = y, Width = 90, Height = 32 };
+        y += 36;
+        var btnOK = new Button
+        {
+            Text = "OK", Width = 90, Height = 32,
+            Left = ClientSize.Width - margin - 200,
+            Top = ClientSize.Height - 50
+        };
+        var btnCancel = new Button
+        {
+            Text = "Cancel", Width = 90, Height = 32,
+            Left = ClientSize.Width - margin - 100,
+            Top = ClientSize.Height - 50
+        };
         btnOK.Click += (_, _) => { if (ValidateAndSave()) { DialogResult = DialogResult.OK; Close(); } };
         btnCancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
         Controls.AddRange(new Control[] { btnOK, btnCancel });
-    }
-
-    private Label AddLabel(string text, int x, int y)
-    {
-        var l = new Label { Left = x, Top = y, Width = 120, Text = text };
-        Controls.Add(l); return l;
-    }
-
-    private TextBox AddTextBox(int x, int y, int w)
-    {
-        var t = new TextBox { Left = x, Top = y, Width = w };
-        Controls.Add(t); return t;
-    }
-
-    private CheckBox AddCheckBox(string text, int x, int y)
-    {
-        var c = new CheckBox { Left = x, Top = y, Text = text };
-        Controls.Add(c); return c;
     }
 
     private void LoadFromRule()
@@ -174,7 +183,7 @@ internal class RuleEditorDialog : Form
         {
             _chkTimeEnabled.Checked = true;
             foreach (var d in _rule.TimeCondition.Days)
-                _clbDays.SetItemChecked((int)d - 1, true);
+                _clbDays.SetItemChecked(((int)d + 6) % 7, true);
             if (_rule.TimeCondition.StartTime.HasValue)
                 _dtpStart.Value = DateTime.Today.Add(_rule.TimeCondition.StartTime.Value.ToTimeSpan());
             if (_rule.TimeCondition.EndTime.HasValue)

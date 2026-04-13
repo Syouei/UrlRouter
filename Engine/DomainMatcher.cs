@@ -15,10 +15,16 @@ internal static class DomainMatcher
 
         if (pattern.StartsWith("*."))
         {
-            var suffix = pattern[1..];
-            // Require a proper dot boundary before the suffix
-            return host.EndsWith(suffix, StringComparison.Ordinal) &&
-                   (host.Length == suffix.Length || host[^suffix.Length] == '.');
+            var suffix = pattern[1..]; // remove leading "*"
+            // Host exactly equals the bare domain (github.com matches *.github.com)
+            if (host.Length == suffix.Length && host.Equals(suffix, StringComparison.Ordinal))
+                return true;
+            // Host ends with .suffix and has a dot separator before it
+            if (host.Length > suffix.Length &&
+                host.EndsWith(suffix, StringComparison.Ordinal) &&
+                host[^suffix.Length] == '.')
+                return true;
+            return false;
         }
 
         return host == pattern;

@@ -45,10 +45,22 @@ internal static class Program
 
         _trayManager.Initialize();
 
-        // Phase 6: If a URL was provided at startup, show the confirm dialog immediately
+        // Phase 6: If a URL was provided at startup, route or show dialog based on rules
         if (!string.IsNullOrWhiteSpace(_pendingUrl))
         {
-            ShowConfirmDialog(_pendingUrl);
+            try
+            {
+                var match = RuleEngine.Match(_pendingUrl, _settings);
+                if (match.MatchedRule != null)
+                    SilentRoute(_pendingUrl);
+                else
+                    ShowConfirmDialog(_pendingUrl);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Main-StartupUrl", ex, _pendingUrl);
+                ShowConfirmDialog(_pendingUrl);
+            }
         }
 
         // Phase 7: Run message loop (tray keeps app alive)
@@ -63,10 +75,29 @@ internal static class Program
         var settingsSnapshot = _settings;
         void Dispatch()
         {
+            // If a rule matches, route silently regardless of ShowConfirmDialog setting
             if (settingsSnapshot.ShowConfirmDialog)
+            {
+                try
+                {
+                    var match = RuleEngine.Match(url, settingsSnapshot);
+                    if (match.MatchedRule != null)
+                    {
+                        SilentRoute(url);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("OnUrlReceived", ex, url);
+                }
+                // No rule matched — show the confirm dialog
                 ShowConfirmDialog(url);
+            }
             else
+            {
                 SilentRoute(url);
+            }
         }
 
         if (Application.OpenForms.Count > 0)
@@ -77,15 +108,28 @@ internal static class Program
 
     private static void ShowConfirmDialog(string url)
     {
-        var match = RuleEngine.Match(url, _settings);
+        MatchResult match;
+        try
+        {
+            match = RuleEngine.Match(url, _settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("ShowConfirmDialog", ex, url);
+            MessageBox.Show($"Failed to evaluate routing rules: {ex.Message}",
+                "URL Router", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
 
         using var dlg = new RoutingConfirmDialog(url, match, _settings.DefaultBrowser);
+        dlg.Shown += (_, _) => dlg.Activate();
         var result = dlg.ShowDialog();
 
         if (result != DialogResult.OK) return;
 
         var finalUrl = dlg.FinalUrl;
         var browserExe = dlg.SelectedBrowserExe;
+        var browserKind = dlg.SelectedBrowserKind;
 
         if (string.IsNullOrWhiteSpace(browserExe))
         {
@@ -93,13 +137,56 @@ internal static class Program
             return;
         }
 
+        // Save rule if user checked "Remember this choice"
+        if (dlg.RememberRule)
+        {
+            SaveRule(url, browserKind, dlg.RememberRuleName);
+        }
+
         BrowserResolver.LaunchBrowser(browserExe, finalUrl);
         Logger.Open(browserExe, finalUrl);
     }
 
+    private static void SaveRule(string url, BrowserKind browserKind, string ruleName)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return;
+
+        var host = uri.Host.ToLowerInvariant();
+        // Use exact host pattern so it matches both the bare domain and any subdomains.
+        // DomainMatcher.Matches("github.com", "github.com") = true
+        // DomainMatcher.Matches("www.github.com", "github.com") = true (has dot separator)
+        var domainPattern = host;
+
+        var rule = new RoutingRule
+        {
+            Name = string.IsNullOrWhiteSpace(ruleName) ? host : ruleName,
+            DomainPattern = domainPattern,
+            Browser = new BrowserTarget { Kind = browserKind },
+            IsEnabled = true
+        };
+
+        _settings.Rules.Add(rule);
+        _settings = SettingsStore.Load(); // reload to keep in-memory state in sync
+        SettingsStore.Save(_settings);
+
+        Logger.Log($"RULE\t{rule.Name} -> {browserKind} for pattern {domainPattern}");
+    }
+
     private static void SilentRoute(string url)
     {
-        var match = RuleEngine.Match(url, _settings);
+        MatchResult match;
+        try
+        {
+            match = RuleEngine.Match(url, _settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("SilentRoute", ex, url);
+            _trayManager?.ShowBalloon("URL Router", $"Rule evaluation failed: {ex.Message}", ToolTipIcon.Error);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(match.BrowserExe)) return;
 
         BrowserResolver.LaunchBrowser(match.BrowserExe, url);

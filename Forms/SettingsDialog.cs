@@ -28,65 +28,64 @@ internal class SettingsDialog : Form
     {
         Text = "Settings";
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(500, 340);
+        MinimumSize = new Size(460, 420);
+        ClientSize = new Size(520, 450);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
 
-        int y = 12, margin = 12;
-        int labelW = 180;
+        int margin = 16;
+        int labelW = 190;
+        int fieldX = margin + labelW + 8;
+        int fieldW = ClientSize.Width - fieldX - margin;
+        int rightBtnX = ClientSize.Width - margin - 100;
 
-        AddLabel("Default browser:", margin, y);
+        int y = margin;
+
+        // Default browser
+        var lbl1 = new Label { Left = margin, Top = y + 3, Width = labelW, Text = "Default browser:" };
         _cmbDefaultBrowser = new ComboBox
         {
-            Left = margin + labelW, Top = y, Width = 250,
+            Left = fieldX, Top = y, Width = 220,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        _cmbDefaultBrowser.Items.AddRange(new object[] { "Edge", "Chrome", "Firefox" });
+        _cmbDefaultBrowser.Items.AddRange(new object[] { "Edge", "Chrome", "Firefox", "Custom" });
+        Controls.Add(lbl1);
         Controls.Add(_cmbDefaultBrowser);
 
         y += 36;
-        _chkStartWithWindows = AddCheckBox("Start with Windows", margin, y);
-        y += 28;
-        _chkMinimizeToTray = AddCheckBox("Minimize to system tray on close", margin, y);
-        y += 28;
-        _chkShowConfirmDialog = AddCheckBox("Show confirmation dialog for each URL", margin, y);
-        y += 36;
+        _chkStartWithWindows = new CheckBox { Left = margin, Top = y, Text = "Start with Windows", Width = 400 };
+        Controls.Add(_chkStartWithWindows);
 
-        var sep = new Label
-        {
-            Left = margin, Top = y, Width = ClientSize.Width - margin * 2, Height = 1,
-            BorderStyle = BorderStyle.Fixed3D
-        };
+        y += 28;
+        _chkMinimizeToTray = new CheckBox { Left = margin, Top = y, Text = "Minimize to system tray on close", Width = 400 };
+        Controls.Add(_chkMinimizeToTray);
+
+        y += 28;
+        _chkShowConfirmDialog = new CheckBox { Left = margin, Top = y, Text = "Show confirmation dialog for each URL", Width = 400 };
+        Controls.Add(_chkShowConfirmDialog);
+
+        y += 24;
+        var sep = new Label { Left = margin, Top = y, Width = ClientSize.Width - margin * 2, Height = 1, BorderStyle = BorderStyle.Fixed3D };
         Controls.Add(sep);
 
-        y += 10;
-        AddLabel("Protocol registration:", margin, y);
-        _lblRegStatus = new Label
-        {
-            Left = margin + labelW, Top = y, Width = 250,
-            ForeColor = System.Drawing.Color.DarkGreen
-        };
+        y += 12;
+        var lbl2 = new Label { Left = margin, Top = y + 3, Width = labelW, Text = "Protocol registration:" };
+        _lblRegStatus = new Label { Left = fieldX, Top = y + 3, AutoSize = true };
+        Controls.Add(lbl2);
         Controls.Add(_lblRegStatus);
 
-        y += 28;
-        _btnOpenDefaults = new Button
-        {
-            Left = margin + labelW, Top = y, Width = 200, Height = 28,
-            Text = "Open Windows Default Apps"
-        };
+        y += 32;
+        _btnOpenDefaults = new Button { Left = fieldX, Top = y, Width = 220, Height = 32, Text = "Open Windows Default Apps" };
         _btnOpenDefaults.Click += (_, _) => RegistrationHelper.OpenSystemDefaultApps();
         Controls.Add(_btnOpenDefaults);
 
-        _btnAbout = new Button
-        {
-            Left = margin + labelW + 215, Top = y, Width = 90, Height = 28,
-            Text = "About..."
-        };
+        y += 38;
+        _btnAbout = new Button { Left = fieldX, Top = y, Width = 100, Height = 32, Text = "About..." };
         _btnAbout.Click += (_, _) => new AboutDialog().ShowDialog();
         Controls.Add(_btnAbout);
 
-        y += 40;
+        y += 36;
         var note = new Label
         {
             Left = margin, Top = y, Width = ClientSize.Width - margin * 2,
@@ -95,37 +94,32 @@ internal class SettingsDialog : Form
         };
         Controls.Add(note);
 
+        // Bottom buttons — fixed to form bottom
+        int btnY = ClientSize.Height - margin - 32;
+        int btnW = 85;
+        int btnSpacing = 12;
+
         var btnOK = new Button
         {
-            Text = "OK", Left = ClientSize.Width - margin - 190, Top = ClientSize.Height - 45,
-            Width = 85, Height = 32
+            Text = "OK",
+            Left = ClientSize.Width - margin - btnW,
+            Top = btnY, Width = btnW, Height = 32
         };
         var btnCancel = new Button
         {
-            Text = "Cancel", Left = ClientSize.Width - margin - 95, Top = ClientSize.Height - 45,
-            Width = 85, Height = 32
+            Text = "Cancel",
+            Left = btnOK.Left - btnSpacing - btnW,
+            Top = btnY, Width = btnW, Height = 32
         };
         btnOK.Click += (_, _) => { SaveSettings(); DialogResult = DialogResult.OK; Close(); };
         btnCancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
-        Controls.AddRange(new Control[] { btnOK, btnCancel });
-    }
-
-    private Label AddLabel(string text, int x, int y)
-    {
-        var l = new Label { Left = x, Top = y, Width = 160, Text = text };
-        Controls.Add(l); return l;
-    }
-
-    private CheckBox AddCheckBox(string text, int x, int y)
-    {
-        var c = new CheckBox { Left = x, Top = y, Text = text, Width = 400 };
-        Controls.Add(c); return c;
+        Controls.Add(btnOK);
+        Controls.Add(btnCancel);
     }
 
     private void LoadFromSettings()
     {
-        // Clamp to valid range to avoid -1 wraparound
-        _cmbDefaultBrowser.SelectedIndex = Math.Clamp((int)_settings.DefaultBrowser.Kind, 0, 2);
+        _cmbDefaultBrowser.SelectedIndex = Math.Clamp((int)_settings.DefaultBrowser.Kind, 0, 3);
         _chkStartWithWindows.Checked = _settings.StartWithWindows;
         _chkMinimizeToTray.Checked = _settings.MinimizeToTray;
         _chkShowConfirmDialog.Checked = _settings.ShowConfirmDialog;

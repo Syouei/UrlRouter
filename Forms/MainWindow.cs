@@ -11,6 +11,8 @@ internal class MainWindow : Form
     private readonly Func<TrayManager?> _getTrayManager;
     private ListView _lvRules = null!;
 
+    private const int COL_NUM = 0, COL_ENABLED = 1, COL_NAME = 2, COL_DOMAIN = 3, COL_TIME = 4, COL_BROWSER = 5;
+
     public MainWindow(AppSettings settings, Func<TrayManager?> getTrayManager)
     {
         _settings = settings;
@@ -18,10 +20,10 @@ internal class MainWindow : Form
 
         Text = "URL Router - Rule Manager";
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(800, 480);
+        MinimumSize = new Size(700, 450);
+        ClientSize = new Size(900, 540);
         StartPosition = FormStartPosition.CenterScreen;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
         MinimizeBox = false;
 
         InitControls();
@@ -30,37 +32,40 @@ internal class MainWindow : Form
 
     private void InitControls()
     {
+        // Simple vertical layout without TableLayoutPanel to avoid layout loops
         var toolbar = new FlowLayoutPanel
         {
             Left = 12, Top = 12,
+            Height = 44,
             Width = ClientSize.Width - 24,
-            Height = 36,
             FlowDirection = FlowDirection.LeftToRight,
-            AutoSize = true
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
-        var btnAdd = new Button { Text = "+ Add Rule", Width = 110 };
-        var btnEdit = new Button { Text = "Edit", Width = 90 };
-        var btnDelete = new Button { Text = "Delete", Width = 90 };
-        var btnUp = new Button { Text = "^ Up", Width = 70 };
-        var btnDown = new Button { Text = "v Down", Width = 70 };
-        var btnSettings = new Button { Text = "Settings...", Width = 100 };
-        var btnClose = new Button { Text = "Close", Width = 90 };
+        var btnAdd    = new Button { Text = "+ Add Rule",  Width = 110, Height = 32 };
+        var btnEdit   = new Button { Text = "Edit",       Width = 90,  Height = 32 };
+        var btnDelete = new Button { Text = "Delete",      Width = 90,  Height = 32 };
+        var btnUp     = new Button { Text = "^ Up",        Width = 70,  Height = 32 };
+        var btnDown   = new Button { Text = "v Down",      Width = 70,  Height = 32 };
+        var btnSep    = new Label  { Width = 20,           Height = 32  };
+        var btnSet    = new Button { Text = "Settings...", Width = 100, Height = 32 };
+        var btnClose  = new Button { Text = "Close",       Width = 90,  Height = 32 };
 
         btnAdd.Click += (_, _) => AddRule();
         btnEdit.Click += (_, _) => EditSelectedRule();
         btnDelete.Click += (_, _) => DeleteSelectedRule();
         btnUp.Click += (_, _) => MoveRule(-1);
         btnDown.Click += (_, _) => MoveRule(1);
-        btnSettings.Click += (_, _) => OpenSettings();
+        btnSet.Click += (_, _) => OpenSettings();
         btnClose.Click += (_, _) => Close();
 
-        toolbar.Controls.AddRange(new Control[] { btnAdd, btnEdit, btnDelete, btnUp, btnDown, btnSettings, btnClose });
+        toolbar.Controls.AddRange(new Control[] { btnAdd, btnEdit, btnDelete, btnUp, btnDown, btnSep, btnSet, btnClose });
+        Controls.Add(toolbar);
 
         _lvRules = new ListView
         {
             Left = 12,
-            Top = toolbar.Bottom + 10,
+            Top = toolbar.Bottom + 8,
             Width = ClientSize.Width - 24,
             Height = ClientSize.Height - toolbar.Bottom - 50,
             View = View.Details,
@@ -76,10 +81,43 @@ internal class MainWindow : Form
         _lvRules.Columns.Add("Time", 140);
         _lvRules.Columns.Add("Browser", 100);
 
+        _lvRules.Resize += (_, _) => RedistributeColumnWidths();
         _lvRules.DoubleClick += (_, _) => EditSelectedRule();
 
-        Controls.Add(toolbar);
         Controls.Add(_lvRules);
+    }
+
+    private void RedistributeColumnWidths()
+    {
+        if (_lvRules.Columns.Count < 6 || _lvRules.ClientSize.Width <= 0) return;
+
+        int totalWidth = _lvRules.ClientSize.Width;
+        int fixedWidth = _lvRules.Columns[COL_NUM].Width +
+                         _lvRules.Columns[COL_ENABLED].Width +
+                         _lvRules.Columns[COL_BROWSER].Width;
+        int flexWidth = totalWidth - fixedWidth - (6 * 2);
+
+        int[] flexCols = { COL_NAME, COL_DOMAIN, COL_TIME };
+        int flexPerCol = Math.Max(60, flexWidth / 3);
+        foreach (int col in flexCols)
+            _lvRules.Columns[col].Width = flexPerCol;
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        // Re-position toolbar and resize listview on form resize
+        if (Controls.Count >= 2)
+        {
+            var toolbar = Controls[0] as FlowLayoutPanel;
+            var lv = Controls[1] as ListView;
+            if (toolbar != null && lv != null)
+            {
+                toolbar.Width = ClientSize.Width - 24;
+                lv.Width = ClientSize.Width - 24;
+                lv.Height = ClientSize.Height - toolbar.Bottom - 50;
+            }
+        }
     }
 
     private void LoadRules()
@@ -117,7 +155,7 @@ internal class MainWindow : Form
     {
         if (_lvRules.SelectedItems.Count == 0) return;
         var rule = (RoutingRule)_lvRules.SelectedItems[0].Tag!;
-        using var dlg = new RuleEditorDialog(rule!);
+        using var dlg = new RuleEditorDialog(rule);
         if (dlg.ShowDialog() == DialogResult.OK)
         {
             var settings = SettingsStore.Load();
@@ -136,7 +174,7 @@ internal class MainWindow : Form
         if (_lvRules.SelectedItems.Count == 0) return;
         var rule = (RoutingRule)_lvRules.SelectedItems[0].Tag!;
         var settings = SettingsStore.Load();
-        settings.Rules.RemoveAll(r => r.Id == rule!.Id);
+        settings.Rules.RemoveAll(r => r.Id == rule.Id);
         SettingsStore.Save(settings);
         LoadRules();
     }

@@ -22,6 +22,9 @@ internal class RoutingConfirmDialog : Form
 
     public string FinalUrl => _txtUrl.Text.Trim();
     public string SelectedBrowserExe { get; private set; } = "";
+    public BrowserKind SelectedBrowserKind { get; private set; } = BrowserKind.Edge;
+    public bool RememberRule { get; private set; } = false;
+    public string RememberRuleName => _txtRememberName.Text.Trim();
 
     public RoutingConfirmDialog(string url, MatchResult match, BrowserTarget defaultBrowser)
     {
@@ -30,95 +33,101 @@ internal class RoutingConfirmDialog : Form
 
         Text = "About to open link";
         AutoScaleMode = AutoScaleMode.Dpi;
+        MinimumSize = new Size(500, 280);
         ClientSize = new Size(700, 300);
         StartPosition = FormStartPosition.CenterScreen;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
         MinimizeBox = false;
         TopMost = true;
         ShowInTaskbar = false;
 
-        var margin = 12;
-        var rowWidth = ClientSize.Width - margin * 2;
+        int margin = 12;
+        int rowW = ClientSize.Width - margin * 2;
+        int y = margin;
 
+        // URL description
         var lbl = new Label
         {
-            Left = margin, Top = 14, Width = rowWidth,
+            Left = margin, Top = y, Width = rowW,
             Text = "An app requested to open the following link:"
         };
+        Controls.Add(lbl);
 
+        y += 24;
         _txtUrl = new TextBox
         {
-            Left = margin, Top = 40, Width = rowWidth,
-            Text = url, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            Left = margin, Top = y, Width = rowW,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
+        Controls.Add(_txtUrl);
 
+        y += 28;
         _lblMatchedRule = new Label
         {
-            Left = margin, Top = 68, Width = rowWidth,
+            Left = margin, Top = y, Width = rowW,
             Text = match.MatchedRule != null
                 ? $"Matched rule: {match.MatchedRule.Name} ({match.MatchedRule.TimeCondition?.Summary ?? "Always"})"
                 : "(Default browser — no rule matched)"
         };
+        Controls.Add(_lblMatchedRule);
 
-        var browserLabel = new Label
-        {
-            Left = margin, Top = 96, Width = 80, Height = 20,
-            Text = "Browser:"
-        };
-
+        y += 26;
+        var browserLbl = new Label { Left = margin, Top = y + 2, Width = 80, Text = "Browser:" };
         _cmbBrowser = new ComboBox
         {
-            Left = margin + 82, Top = 94, Width = 220,
+            Left = margin + 82, Top = y, Width = 200,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         _cmbBrowser.Items.AddRange(new object[] { "Edge", "Chrome", "Firefox", "Custom" });
         _cmbBrowser.SelectedIndex = GetSelectedBrowserIndex();
         _cmbBrowser.SelectedIndexChanged += (_, _) => UpdateSelectedExe();
+        Controls.Add(browserLbl);
+        Controls.Add(_cmbBrowser);
 
-        var openWithLabel = new Label
-        {
-            Left = margin + 315, Top = 96, Width = 280, Height = 20,
-            Text = match.BrowserExeResolved
-                ? $"Opening in: {Path.GetFileNameWithoutExtension(match.BrowserExe)}"
-                : "Browser not found on this system",
-            ForeColor = match.BrowserExeResolved ? System.Drawing.Color.DarkGreen : System.Drawing.Color.DarkRed
-        };
-
+        y += 28;
         _chkRemember = new CheckBox
         {
-            Left = margin, Top = 128, Width = rowWidth,
+            Left = margin, Top = y, Width = rowW,
             Text = "Remember this choice (create a rule for this domain)"
         };
         _chkRemember.CheckedChanged += (_, _) =>
         {
             _txtRememberName!.Visible = _chkRemember.Checked;
         };
+        Controls.Add(_chkRemember);
 
+        y += 24;
         _txtRememberName = new TextBox
         {
-            Left = margin + 20, Top = 152, Width = rowWidth - 20,
+            Left = margin + 20, Top = y, Width = rowW - 20,
             Text = Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host : "new-rule",
             Visible = false
         };
+        Controls.Add(_txtRememberName);
 
-        int btnY = 200;
-        int btnW = 100;
+        y += 32;
+        int btnY = y;
+        int btnW = 110;
 
         _btnOpen = new Button
         {
-            Left = ClientSize.Width - margin - btnW * 3 - 20, Top = btnY,
-            Width = btnW, Height = 32, Text = "Open (Enter)", TabIndex = 0
+            Text = "Open (Enter)",
+            Left = ClientSize.Width - margin - btnW * 3 - 16,
+            Top = btnY, Width = btnW, Height = 32,
+            TabIndex = 0
         };
         _btnCopy = new Button
         {
-            Left = ClientSize.Width - margin - btnW * 2 - 10, Top = btnY,
-            Width = btnW, Height = 32, Text = "Copy"
+            Text = "Copy",
+            Left = ClientSize.Width - margin - btnW * 2 - 8,
+            Top = btnY, Width = 90, Height = 32
         };
         _btnCancel = new Button
         {
-            Left = ClientSize.Width - margin - btnW, Top = btnY,
-            Width = btnW, Height = 32, Text = "Cancel (Esc)", TabIndex = 1
+            Text = "Cancel (Esc)",
+            Left = ClientSize.Width - margin - btnW,
+            Top = btnY, Width = btnW, Height = 32,
+            TabIndex = 1
         };
 
         _btnOpen.Click += BtnOpen_Click;
@@ -128,8 +137,7 @@ internal class RoutingConfirmDialog : Form
         AcceptButton = _btnOpen;
         CancelButton = _btnCancel;
 
-        Controls.AddRange(new Control[] { lbl, _txtUrl, _lblMatchedRule, browserLabel, _cmbBrowser, openWithLabel,
-            _chkRemember, _txtRememberName, _btnOpen, _btnCopy, _btnCancel });
+        Controls.AddRange(new Control[] { _btnOpen, _btnCopy, _btnCancel });
 
         UpdateSelectedExe();
     }
@@ -143,8 +151,8 @@ internal class RoutingConfirmDialog : Form
 
     private void UpdateSelectedExe()
     {
-        var kind = (BrowserKind)_cmbBrowser.SelectedIndex;
-        var target = new BrowserTarget { Kind = kind };
+        SelectedBrowserKind = (BrowserKind)_cmbBrowser.SelectedIndex;
+        var target = new BrowserTarget { Kind = SelectedBrowserKind };
         var exe = BrowserResolver.Resolve(target);
         SelectedBrowserExe = exe ?? "";
     }
@@ -160,6 +168,7 @@ internal class RoutingConfirmDialog : Form
             return;
         }
 
+        RememberRule = _chkRemember.Checked;
         DialogResult = DialogResult.OK;
         Close();
     }
